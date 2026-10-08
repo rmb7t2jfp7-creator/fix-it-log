@@ -1,0 +1,1 @@
+{"name":"fix-it-log","version":"0.1.0","private":true,"description":"A local repair journal with honest cost tracking","scripts":{"test":"node --test core.test.js"},"license":"MIT"}

@@ -1,0 +1,10 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const C = require('./core.js');
+test('fictional demo round trips without changing totals',()=>{const x=C.parse(JSON.stringify(C.demo()));assert.deepEqual(C.summary(x.items),{items:3,repaired:1,attempts:2,spent:7.75});});
+test('calendar date validation handles leap years',()=>{assert.equal(C.date('2024-02-29'),'2024-02-29');for(const d of ['2025-02-29','2026-04-31','2026-13-01','2026-1-01','0000-01-01','<script>'])assert.throws(()=>C.date(d));});
+test('costs reject nonfinite, negative and fractional cents',()=>{for(const n of [NaN,Infinity,-1,1000001,0.001,'2',null])assert.throws(()=>C.money(n));assert.equal(C.money(0),0);assert.equal(C.money(1.10),1.1);});
+test('spending sums integer cents exactly',()=>{const x=C.demo();x.items[0].attempts[0].cost=.1;x.items[1].attempts[0].cost=.2;assert.equal(C.summary(x.items).spent,.3);});
+test('imports reject unknown fields, versions, duplicate IDs and oversized data',()=>{assert.throws(()=>C.parse('{'));assert.throws(()=>C.parse(' '.repeat(2000001)));for(const change of [x=>x.version=2,x=>x.extra=1,x=>x.items.push(x.items[0]),x=>x.items[0].attempts.push(x.items[0].attempts[0]),x=>x.items[0].status='verified',x=>x.items[0].attempts[0].date='2026-01-01']){const x=C.demo();change(x);assert.throws(()=>C.validate(x));}});
+test('untrusted text is preserved as plain data; controls and malicious schema keys rejected',()=>{const x=C.demo();x.items[0].name='<img src=x onerror=alert(1)>';assert.equal(C.validate(x).items[0].name,x.items[0].name);x.currency='USD\n';assert.throws(()=>C.validate(x));assert.throws(()=>C.parse('{"app":"fix-it-log","version":1,"currency":"USD","items":[],"__proto__":{}}'));});
+test('a journal cannot outgrow its own backup import limit',()=>{const x=C.empty();for(let i=0;i<20;i++)x.items.push({id:'item-'+i,name:'Test',problem:'Problem',created:'2026-01-01',status:'open',attempts:Array.from({length:100},(_,j)=>({id:'a-'+j,date:'2026-01-01',note:'é'.repeat(1000),cost:0}))});assert.throws(()=>C.validate(x),/2 MB/);});
